@@ -6,7 +6,7 @@ const ErrorHandler = require("../utils/ErrorHandler");
 const register = async (req, res) => {
   // #swagger.tags = ['auth']
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, confirmPassword } = req.body;
     if (
       !password.match(
         /(?=[A-Za-z0-9@#$%^&+!=]+$)^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@#$%^&+!=])(?=.{8,}).*$/
@@ -18,6 +18,28 @@ const register = async (req, res) => {
         req,
         res
       );
+    }
+    if (
+      !confirmPassword.match(
+        /(?=[A-Za-z0-9@#$%^&+!=]+$)^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[@#$%^&+!=])(?=.{8,}).*$/
+      )
+    ) {
+      return ErrorHandler(
+        "Confirm Password must contain atleast one uppercase letter, one special character and one number",
+        400,
+        req,
+        res
+      );
+    }
+
+    if (password != confirmPassword) {
+      return ErrorHandler(
+        "Password and Confirm Password do not match",
+        400,
+        req,
+        res
+      );
+
     }
     const user = await User.findOne({ email });
     if (user) {
@@ -52,6 +74,7 @@ const requestEmailToken = async (req, res) => {
     await user.save();
     const message = `Your email verification token is ${emailVerificationToken} and it expires in 10 minutes`;
     const subject = `Email verification token`;
+    console.log("email verification tokwn=====>", emailVerificationToken);
     await sendMail(email, subject, message);
     return SuccessHandler(
       `Email verification token sent to ${email}`,
@@ -111,7 +134,14 @@ const login = async (req, res) => {
       return ErrorHandler("Email not verified", 400, req, res);
     }
     jwtToken = user.getJWTToken();
-    return SuccessHandler("Logged in successfully", 200, res);
+    console.log("login jwtToken====>", jwtToken);
+    dataResponse = {
+      "message": "Logged in successfully",
+      "jwtToken": jwtToken,
+      "user": user
+    };
+    // res={"jwtToken":jwtToken};
+    return SuccessHandler(dataResponse, 200, res);
   } catch (error) {
     return ErrorHandler(error.message, 500, req, res);
   }
@@ -141,6 +171,7 @@ const forgotPassword = async (req, res) => {
     }
     const passwordResetToken = Math.floor(100000 + Math.random() * 900000);
     const passwordResetTokenExpires = new Date(Date.now() + 10 * 60 * 1000);
+    console.log("reset password tokwn=====>", passwordResetToken);
     user.passwordResetToken = passwordResetToken;
     user.passwordResetTokenExpires = passwordResetTokenExpires;
     await user.save();
